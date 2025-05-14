@@ -1,17 +1,16 @@
 from django.shortcuts import render
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
-from .models import Empresa, PeriodoContable, BalanceGeneral, EstadoResultados
-from .forms import EmpresaForm, PeriodoForm, BalanceForm, EstadoResultadosForm
 from decimal import Decimal
 from django.http import HttpResponse
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib import colors
+from .models import Empresa, PeriodoContable, BalanceGeneral, EstadoResultados
+from .forms import EmpresaForm, PeriodoContableForm, BalanceGeneralForm, EstadoResultadosForm
 
-
-
+# Vistas para Empresa
 def lista_empresas(request):
     empresas = Empresa.objects.all()
     return render(request, 'sistema_financiero/empresas/lista.html', {'empresas': empresas})
@@ -20,118 +19,133 @@ def crear_empresa(request):
     if request.method == 'POST':
         form = EmpresaForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Empresa creada exitosamente')
+            empresa = form.save()
+            messages.success(request, f'Empresa {empresa.nombre} creada exitosamente')
             return redirect('lista_empresas')
     else:
         form = EmpresaForm()
+    
     return render(request, 'sistema_financiero/empresas/crear.html', {'form': form})
 
 def detalle_empresa(request, empresa_id):
     empresa = get_object_or_404(Empresa, pk=empresa_id)
     periodos = empresa.periodocontable_set.all().order_by('-fecha_fin')
-    
-    # Obtener el último balance si existe
-    ultimo_balance = None
-    ultimo_estado = None
-    if periodos.exists():
-        ultimo_periodo = periodos.first()
-        ultimo_balance = BalanceGeneral.objects.filter(periodo=ultimo_periodo).first()
-        ultimo_estado = EstadoResultados.objects.filter(periodo=ultimo_periodo).first()
-    
     return render(request, 'sistema_financiero/empresas/detalle.html', {
         'empresa': empresa,
-        'periodos': periodos,
-        'ultimo_balance': ultimo_balance,
-        'ultimo_estado': ultimo_estado
+        'periodos': periodos
     })
 
-
+# Vistas para Periodo Contable
 def crear_periodo(request, empresa_id):
     empresa = get_object_or_404(Empresa, pk=empresa_id)
+    
     if request.method == 'POST':
-        form = PeriodoForm(request.POST)
+        form = PeriodoContableForm(request.POST)
         if form.is_valid():
             periodo = form.save(commit=False)
             periodo.empresa = empresa
             periodo.save()
-            messages.success(request, 'Periodo contable creado exitosamente')
+            messages.success(request, f'Período {periodo.nombre} creado exitosamente')
             return redirect('detalle_empresa', empresa_id=empresa.id)
     else:
-        form = PeriodoForm()
+        form = PeriodoContableForm()
+    
     return render(request, 'sistema_financiero/periodos/crear.html', {
         'form': form,
         'empresa': empresa
     })
 
-
 def detalle_periodo(request, periodo_id):
     periodo = get_object_or_404(PeriodoContable, pk=periodo_id)
-    balance = BalanceGeneral.objects.filter(periodo=periodo).first()
-    estado_resultados = EstadoResultados.objects.filter(periodo=periodo).first()
     
-    # Cálculo de razones financieras básicas
-    razones = {}
-    if balance and estado_resultados:
-        # Razones de liquidez
-        if balance.pasivo_corriente != 0:
-            razones['corriente'] = balance.activo_corriente / balance.pasivo_corriente
-            razones['acida'] = (balance.activo_corriente) / balance.pasivo_corriente  # Asumiendo que no hay inventario separado
-        
-        # Razones de rentabilidad
-        if estado_resultados.ingresos != 0:
-            razones['margen_bruto'] = (estado_resultados.utilidad_bruta / estado_resultados.ingresos) * 100
-            razones['margen_neto'] = (estado_resultados.utilidad_neta / estado_resultados.ingresos) * 100
+    try:
+        balance = BalanceGeneral.objects.get(periodo=periodo)
+    except BalanceGeneral.DoesNotExist:
+        balance = None
+    
+    try:
+        estado_resultados = EstadoResultados.objects.get(periodo=periodo)
+    except EstadoResultados.DoesNotExist:
+        estado_resultados = None
     
     return render(request, 'sistema_financiero/periodos/detalle.html', {
         'periodo': periodo,
         'balance': balance,
         'estado_resultados': estado_resultados,
-        'razones': razones,
         'empresa': periodo.empresa
     })
 
+# Vistas para Balance General
 def crear_balance(request, periodo_id):
     periodo = get_object_or_404(PeriodoContable, pk=periodo_id)
+    
     if request.method == 'POST':
-        form = BalanceForm(request.POST)
+        form = BalanceGeneralForm(request.POST)
         if form.is_valid():
-            balance = form.save(commit=False)
-            balance.periodo = periodo
-            balance.save()
-            messages.success(request, 'Balance general creado exitosamente')
+            # Verificar si ya existe un balance para este período
+            if BalanceGeneral.objects.filter(periodo=periodo).exists():
+                messages.warning(request, 'Ya existe un balance general para este período. Será actualizado.')
+                balance = BalanceGeneral.objects.get(periodo=periodo)
+                form = BalanceGeneralForm(request.POST, instance=balance)
+                form.save()
+            else:
+                balance = form.save(commit=False)
+                balance.periodo = periodo
+                balance.save()
+            
+            messages.success(request, 'Balance general guardado exitosamente')
             return redirect('detalle_periodo', periodo_id=periodo.id)
     else:
-        form = BalanceForm()
+        # Intentar cargar datos existentes si ya hay un balance
+        try:
+            balance = BalanceGeneral.objects.get(periodo=periodo)
+            form = BalanceGeneralForm(instance=balance)
+        except BalanceGeneral.DoesNotExist:
+            form = BalanceGeneralForm()
+    
     return render(request, 'sistema_financiero/balances/crear.html', {
         'form': form,
         'periodo': periodo
     })
 
+# Vistas para Estado de Resultados
 def crear_estado_resultados(request, periodo_id):
     periodo = get_object_or_404(PeriodoContable, pk=periodo_id)
+    
     if request.method == 'POST':
         form = EstadoResultadosForm(request.POST)
         if form.is_valid():
-            estado = form.save(commit=False)
-            estado.periodo = periodo
-            estado.save()
-            messages.success(request, 'Estado de resultados creado exitosamente')
+            # Verificar si ya existe un estado de resultados para este período
+            if EstadoResultados.objects.filter(periodo=periodo).exists():
+                messages.warning(request, 'Ya existe un estado de resultados para este período. Será actualizado.')
+                estado = EstadoResultados.objects.get(periodo=periodo)
+                form = EstadoResultadosForm(request.POST, instance=estado)
+                form.save()
+            else:
+                estado = form.save(commit=False)
+                estado.periodo = periodo
+                estado.save()
+            
+            messages.success(request, 'Estado de resultados guardado exitosamente')
             return redirect('detalle_periodo', periodo_id=periodo.id)
     else:
-        form = EstadoResultadosForm()
+        # Intentar cargar datos existentes si ya hay un estado
+        try:
+            estado = EstadoResultados.objects.get(periodo=periodo)
+            form = EstadoResultadosForm(instance=estado)
+        except EstadoResultados.DoesNotExist:
+            form = EstadoResultadosForm()
+    
     return render(request, 'sistema_financiero/estados/crear.html', {
         'form': form,
         'periodo': periodo
     })
 
-
-
+# Vistas para Análisis Financiero
 def analisis_financiero(request, empresa_id):
     empresa = get_object_or_404(Empresa, pk=empresa_id)
     periodos = PeriodoContable.objects.filter(empresa=empresa).order_by('fecha_inicio')
     
-    # Obtener balances y estados de resultados para cada período
     datos = []
     for periodo in periodos:
         try:
@@ -140,10 +154,11 @@ def analisis_financiero(request, empresa_id):
             
             # Cálculo de razones financieras
             razon_corriente = balance.activo_corriente / balance.pasivo_corriente if balance.pasivo_corriente != 0 else 0
-            prueba_acida = (balance.activo_corriente - 0) / balance.pasivo_corriente if balance.pasivo_corriente != 0 else 0  # Asumiendo que no tenemos inventario separado
-            margen_bruto = estado.utilidad_bruta / estado.ingresos if estado.ingresos != 0 else 0
-            margen_operacional = estado.utilidad_operacional / estado.ingresos if estado.ingresos != 0 else 0
-            margen_neto = estado.utilidad_neta / estado.ingresos if estado.ingresos != 0 else 0
+            prueba_acida = (balance.activo_corriente - balance.inventario) / balance.pasivo_corriente if balance.pasivo_corriente != 0 else 0
+            endeudamiento = balance.pasivo_total / balance.activo_total if balance.activo_total != 0 else 0
+            margen_bruto = (estado.utilidad_bruta / estado.ventas_netas * 100) if estado.ventas_netas != 0 else 0
+            margen_operacional = (estado.utilidad_operacional / estado.ventas_netas * 100) if estado.ventas_netas != 0 else 0
+            margen_neto = (estado.utilidad_neta / estado.ventas_netas * 100) if estado.ventas_netas != 0 else 0
             
             datos.append({
                 'periodo': periodo,
@@ -151,9 +166,10 @@ def analisis_financiero(request, empresa_id):
                 'estado': estado,
                 'razon_corriente': razon_corriente,
                 'prueba_acida': prueba_acida,
-                'margen_bruto': margen_bruto * 100,  # Convertir a porcentaje
-                'margen_operacional': margen_operacional * 100,
-                'margen_neto': margen_neto * 100,
+                'endeudamiento': endeudamiento,
+                'margen_bruto': margen_bruto,
+                'margen_operacional': margen_operacional,
+                'margen_neto': margen_neto,
                 'capital_neto_trabajo': balance.capital_neto_trabajo,
             })
         except (BalanceGeneral.DoesNotExist, EstadoResultados.DoesNotExist):
@@ -163,29 +179,6 @@ def analisis_financiero(request, empresa_id):
         'empresa': empresa,
         'datos': datos,
     })
-
-def gestion_capital_trabajo(request, empresa_id):
-    empresa = get_object_or_404(Empresa, pk=empresa_id)
-    periodos = PeriodoContable.objects.filter(empresa=empresa).order_by('fecha_inicio')
-    
-    datos = []
-    for periodo in periodos:
-        try:
-            balance = BalanceGeneral.objects.get(periodo=periodo)
-            datos.append({
-                'periodo': periodo,
-                'capital_neto': balance.capital_neto_trabajo,
-                'activo_corriente': balance.activo_corriente,
-                'pasivo_corriente': balance.pasivo_corriente,
-            })
-        except BalanceGeneral.DoesNotExist:
-            continue
-    
-    return render(request, 'sistema_financiero/capital/gestion.html', {
-        'empresa': empresa,
-        'datos': datos,
-    })
-
 
 def simulacion_capital_trabajo(request, empresa_id):
     empresa = get_object_or_404(Empresa, pk=empresa_id)
