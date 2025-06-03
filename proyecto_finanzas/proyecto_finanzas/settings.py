@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'capital_trabajo',
     'simulacion',
     'reportes',
+    'widget_tweaks',
 
 ]
 

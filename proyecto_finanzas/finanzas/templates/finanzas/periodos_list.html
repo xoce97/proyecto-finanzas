@@ -20,8 +20,8 @@
         {% for periodo in periodos %}
         <tr>
             <td>{{ periodo.nombre }}</td>
-            <td>{{ periodo.fecha_inicio }}</td>
-            <td>{{ periodo.fecha_fin }}</td>
+            <td>{{ periodo.fecha_inicio|date:"Y-m-d" }}</td>
+            <td>{{ periodo.fecha_inicio|date:"Y-m-d" }}</td>
             <td>
                 <a href="{% url 'finanzas:periodo_edit' periodo.pk %}" class="btn btn-sm btn-primary">Editar</a>
             </td>
