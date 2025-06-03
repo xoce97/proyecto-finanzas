@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Captura Masiva de Movimientos{% endblock %}
+{% block content %}
+<h2>Captura Masiva de Movimientos - Periodo: {{ periodo }}</h2>
+<form method="post">
+    {% csrf_token %}
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Cuenta</th>
+                <th>Monto</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for form in formset %}
+                <tr>
+                    <td>{{ cuentas|index:forloop.counter0 }}</td>
+                    <td>{{ form.monto }}</td>
+                    {{ form.cuenta }}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <button type="submit" class="btn btn-success">Guardar todos</button>
+    <a href="{% url 'finanzas:movimiento_list' %}" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %}

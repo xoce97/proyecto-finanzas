@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Movimientos Financieros{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Movimientos Financieros</h2>
+    <a href="{% url 'finanzas:movimiento_create' %}" class="btn btn-primary">Nuevo Movimiento</a>
+</div>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Periodo</th>
+            <th>Cuenta</th>
+            <th>Monto</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for movimiento in movimientos %}
+        <tr>
+            <td>{{ movimiento.periodo }}</td>
+            <td>{{ movimiento.cuenta }}</td>
+            <td>${{ movimiento.monto|floatformat:2 }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="3" class="text-center">No hay movimientos registrados.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

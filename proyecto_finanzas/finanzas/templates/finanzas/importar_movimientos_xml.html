@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block title %}Importar Movimientos desde XML{% endblock %}
+{% block content %}
+<h2>Importar Movimientos desde XML</h2>
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Importar</button>
+    <a href="{% url 'finanzas:movimiento_list' %}" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %}
