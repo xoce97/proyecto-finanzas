@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block title %}Formulario Periodo{% endblock %}
+
+{% block content %}
+<h2>{% if form.instance.pk %}Editar{% else %}Nuevo{% endif %} Periodo</h2>
+
+<form method="post" novalidate>
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">Guardar</button>
+    <a href="{% url 'finanzas:periodos_list' %}" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %}

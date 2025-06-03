@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}Listado de Periodos{% endblock %}
+
+{% block content %}
+<h2>Periodos Contables</h2>
+
+<a href="{% url 'finanzas:periodo_create' %}" class="btn btn-success mb-3">Nuevo Periodo</a>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Fecha Inicio</th>
+            <th>Fecha Fin</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for periodo in periodos %}
+        <tr>
+            <td>{{ periodo.nombre }}</td>
+            <td>{{ periodo.fecha_inicio }}</td>
+            <td>{{ periodo.fecha_fin }}</td>
+            <td>
+                <a href="{% url 'finanzas:periodo_edit' periodo.pk %}" class="btn btn-sm btn-primary">Editar</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4">No hay periodos registrados.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

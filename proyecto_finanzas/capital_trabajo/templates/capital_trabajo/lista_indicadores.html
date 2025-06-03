@@ -1,0 +1,34 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Indicadores Capital de Trabajo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container mt-4">
+    <h1>Indicadores Capital de Trabajo</h1>
+    <a href="{% url 'crear_indicador' %}" class="btn btn-primary mb-3">Nuevo Indicador</a>
+    <a href="{% url 'crear_resultado' %}" class="btn btn-secondary mb-3">Nuevo Resultado</a>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Descripción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for indicador in indicadores %}
+            <tr>
+                <td>{{ indicador.nombre }}</td>
+                <td>{{ indicador.descripcion }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="2">No hay indicadores registrados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
